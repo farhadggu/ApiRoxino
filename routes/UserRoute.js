@@ -7,6 +7,9 @@ const User = require("../models/User")
 
 router.get("/users", UserCtrl.getAllUsers)
 
+router.post("/signup", UserCtrl.newUser)
+router.post("/login", UserCtrl.loginUser)
+
 router.post("update-user/:id", [
   check("username", "تعداد کاراکتر بین 8 تا 20 باید باشد").isLength({ min:8, max:20 }),
   check("username", "لطفا نام کاربری دیگری انتخاب کنید").custom(value => {
