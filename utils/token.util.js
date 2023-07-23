@@ -17,9 +17,11 @@ function token({ _id, name, email, role, status }) {
       email: email,
       role: role,
       status: status,
-    },
-    process.env.TOKEN_SECRET
+    }
   );
+
+
+  console.log("accessToken", accessToken)
 
   return accessToken;
 }

@@ -4,8 +4,9 @@ const { check } = require("express-validator")
 
 const UserCtrl = require("../controllers/UserCtrl")
 const User = require("../models/User")
+const verify = require("../middleware/verify.middleware")
 
-router.get("/users", UserCtrl.getAllUsers)
+router.get("/users", verify, UserCtrl.getAllUsers)
 
 router.post("/signup", UserCtrl.newUser)
 router.post("/login", UserCtrl.loginUser)

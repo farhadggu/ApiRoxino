@@ -73,6 +73,8 @@ const loginUser = async (req, res) => {
 
     const accessToken = token(result);
 
+    console.log("access", accessToken)
+
     return res
       .status(200)
       .json({ message: "شما با موفقیت وارد شدید", token: accessToken });

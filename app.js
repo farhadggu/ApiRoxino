@@ -14,6 +14,7 @@ require("dotenv").config();
 
 /* router level imports */
 const userRoute = require("./routes/UserRoute");
+const productRoute = require("./routes/ProductRoute");
 
 /* application level connection */
 const app = express();
@@ -32,7 +33,8 @@ app.use(cookieParser());
 app.use(express.json());
 
 /* router level connections */
-app.use("/api/user", userRoute);
+app.use("/api", userRoute);
+app.use("/api", productRoute);
 
 /* connection establishment */
 app.get("/", (req, res, next) => {
