@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-
 const { ObjectId } = mongoose.Schema;
 
 const categorySchema = new mongoose.Schema(
@@ -26,7 +25,4 @@ const categorySchema = new mongoose.Schema(
   }
 );
 
-const Category =
-  mongoose.models.Category || mongoose.model("Category", categorySchema);
-
-export default Category;
+module.exports = mongoose.model("Category", categorySchema)

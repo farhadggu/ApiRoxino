@@ -15,6 +15,11 @@ require("dotenv").config();
 /* router level imports */
 const userRoute = require("./routes/UserRoute");
 const productRoute = require("./routes/ProductRoute");
+const categroyRoute = require("./routes/CategoryRoute");
+const subCategoryRoute = require("./routes/SubCategoryRoute");
+const CouponRoute = require("./routes/CouponRoute");
+const SettingsRoute = require("./routes/SettingsRoute");
+const OrderRoute = require("./routes/OrderRoute");
 
 /* application level connection */
 const app = express();
@@ -35,6 +40,11 @@ app.use(express.json());
 /* router level connections */
 app.use("/api", userRoute);
 app.use("/api", productRoute);
+app.use("/api", categroyRoute);
+app.use("/api", subCategoryRoute);
+app.use("/api", CouponRoute);
+app.use("/api", SettingsRoute);
+app.use("/api", OrderRoute);
 
 /* connection establishment */
 app.get("/", (req, res, next) => {

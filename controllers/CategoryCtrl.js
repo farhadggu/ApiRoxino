@@ -1,42 +1,82 @@
-const Product = require("../models/Product");
+const Category = require("../models/Category");
 const { validationResult } = require("express-validator");
+const slugify = require("slugify");
 
-const getAllProducts = async (req, res) => {
+const getAllCategory = async (req, res) => {
   try {
-    const products = Product.find({});
-    return res.status(200).json({ data: products });
+    if (req.query.pn && req.query.pgn) {
+      const paginate = req.query.pgn;
+      const pageNumber = req.query.pn;
+      const GoalUsers = await Category.find()
+        .sort({ _id: -1 })
+        .skip((pageNumber - 1) * paginate)
+        .limit(paginate)
+        .select({ username: 1, email: 1 })
+        .sort({ updatedAt: -1 }).lean();
+      const AllUserNum = await Category.find().length;
+      res.status(200).json({ data: GoalUsers, AllUserNum });
+    } else {
+      const GoalUsers = await Category.find().sort({ updatedAt: -1 }).lean();
+      const AllUserNum = await Category.find().length;
+      res.status(200).json({ data: GoalUsers, AllUserNum });
+    }
   } catch (err) {
     console.log(err);
     res.status(400).json(err);
   }
 };
-module.exports.getAllProducts = getAllProducts;
+module.exports.getAllCategory = getAllCategory;
 
-const createNewProduct = async (req, res) => {
+const createCategory = async (req, res) => {
   try {
-    const data = req.body;
-
-    const product = await Product.create({
-      name: data.name,
-      description: data.description,
-      brand: data.brand,
-      slug: data.slug,
-      category: data.category,
-      subCategories: data.subCategories,
-      details: data.details,
-      reviews: data.reviews,
-      rating: data.rating,
-      subProducts: data.subProducts,
-      sliderBool: data.sliderBool,
-      sliderImage: data.sliderImage,
+    const { name, slug, icon } = req.body;
+    const test = await Category.findOne({ name });
+    if (test) {
+      return res
+        .status(400)
+        .json({ message: "این دسته بندی موجود می باشد نام دیگری انتخاب کنید" });
+    }
+    await new Category({ name, icon, slug: slugify(slug) }).save();
+    const categories = await Category.find({}).sort({ updatedAt: -1 }).lean();
+    res.json({
+      message: `دسته بندی ${icon} با موفقیت ایجاد شد`,
+      categories,
     });
-
-    return res
-      .status(201)
-      .json({ message: "محصول شما با موفقیت ساخته شد", data: product });
-  } catch (err) {
-    console.log(err);
-    res.status(400).json(err);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
   }
 };
-module.exports.createNewProduct = createNewProduct;
+module.exports.createCategory = createCategory;
+
+const updateCategory = async (req, res) => {
+  try {
+    const { id, name, icon } = req.body;
+    await Category.findByIdAndUpdate(id, { name, icon });
+    const categories = await Category.find({}).sort({ updatedAt: -1 }).lean();
+    res.json({
+      message: "دسته بندی با موفقیت به روز رسانی شد",
+      categories,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+module.exports.updateCategory = updateCategory;
+
+const deleteCategory = async (req, res) => {
+  try {
+    const id = req.params.id;
+    await Category.findByIdAndRemove(id);
+    const categories = await Category.find({}).sort({ updatedAt: -1 }).lean();
+    res.json({
+      message: "دسته بندی با موفقیت حذف شد",
+      categories,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+module.exports.deleteCategory = deleteCategory;

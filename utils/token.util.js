@@ -20,9 +20,6 @@ function token({ _id, name, email, role, status }) {
     }
   );
 
-
-  console.log("accessToken", accessToken)
-
   return accessToken;
 }
 

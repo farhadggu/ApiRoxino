@@ -61,4 +61,24 @@ router.get("/get-user/:id", UserCtrl.getOneUserById)
 
 router.post("/search-user", UserCtrl.searchUser)
 
+router.get("/addresses", UserCtrl.getAllAddresses)
+
+router.put("/create-addresse", UserCtrl.createOrUpdateAddresses)
+
+router.delete("/delete-addresse", UserCtrl.deleteAddress)
+
+router.get("/wishlists", UserCtrl.getAllWishlists)
+
+router.put("/create-wishlist", UserCtrl.createOrUpdateWishlist)
+
+router.delete("/delete-wishlist", UserCtrl.deleteWishlist)
+
+router.put("/change-password", UserCtrl.changePassword)
+
+router.put("/update-profile", UserCtrl.updateProfile)
+
+router.post("/save-address", UserCtrl.saveAddresses)
+
+router.post("/save-cart", UserCtrl.saveCart)
+
 module.exports = router;

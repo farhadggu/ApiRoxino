@@ -4,11 +4,11 @@ const jwt = require("jsonwebtoken");
 const { promisify } = require("util");
 
 async function verify(req, res, next) {
+  console.log(req.headers.authorization.split(" ")[1])
   // console.log(req.headers.authorization);
   try {
     // catch the token from the user's header
     // const token = req.headers?.authorization?.split(" ")[1];
-    console.log(req.headers.authorization)
 
     // If no token is found, return an unauthorized response
     if (!req.headers.authorization.split(" ")[1]) {
