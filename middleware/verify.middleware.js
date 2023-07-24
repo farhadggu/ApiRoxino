@@ -4,14 +4,14 @@ const jwt = require("jsonwebtoken");
 const { promisify } = require("util");
 
 async function verify(req, res, next) {
-  console.log(req.headers.authorization.split(" ")[1])
+  console.log(req.cookies.access_token)
   // console.log(req.headers.authorization);
   try {
     // catch the token from the user's header
     // const token = req.headers?.authorization?.split(" ")[1];
 
     // If no token is found, return an unauthorized response
-    if (!req.headers.authorization.split(" ")[1]) {
+    if (!req.cookies.access_token) {
       return res.status(401).json({
         acknowledgement: false,
         message: "Unauthorized",
@@ -22,7 +22,7 @@ async function verify(req, res, next) {
     }
 
     // Fetch the token and set the user on the request
-    const decoded = await promisify(jwt.verify)(req.headers.authorization.split(" ")[1], process.env.TOKEN_SECRET);
+    const decoded = await promisify(jwt.verify)(req.cookies.access_token, process.env.TOKEN_SECRET);
     req.user = decoded;
 
     next();

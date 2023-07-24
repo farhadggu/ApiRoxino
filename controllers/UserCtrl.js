@@ -58,7 +58,7 @@ const loginUser = async (req, res) => {
   try {
     const data = req.body;
     const result = await User.findOne({ email: data.email });
-
+    console.log(result)
     if (!result) {
       return res
         .status(400)
@@ -80,11 +80,16 @@ const loginUser = async (req, res) => {
 
     const accessToken = token(result);
 
+    res.cookie('access_token', accessToken, {
+      httpOnly: true,
+      // Other cookie options (secure, domain, etc.) can be added here
+    });
+
     console.log("access", accessToken);
 
     return res
       .status(200)
-      .json({ message: "شما با موفقیت وارد شدید", token: accessToken });
+      .json({ message: "شما با موفقیت وارد شدید" });
   } catch (err) {
     console.log(err);
     return res.status(400).json(err);
