@@ -7,11 +7,15 @@ const verify = require("../middleware/verify.middleware");
 
 router.get("/products", verify, ProductCtrl.getAllProducts)
 
-router.get("/products/:id", verify, ProductCtrl.getProductDetail)
+router.get("/products/:slug", verify, ProductCtrl.getProductDetail)
+
+router.get("/product/:id", verify, ProductCtrl.getProductInfoForAddToCart)
+
+router.get("/product/checkout", verify, ProductCtrl.getItemsCardForOrder)
 
 router.post("/create-products", verify, ProductCtrl.createProduct)
 
-router.post("/create-review", verify, ProductCtrl.createOrUpdateReview)
+router.put("/product/:id/review", verify, ProductCtrl.createOrUpdateReview)
 
 router.put("/update-products/:id", verify, ProductCtrl.updateProduct)
 

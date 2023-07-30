@@ -1,5 +1,8 @@
 const Product = require("../models/Product");
-const Category = require("../models/Product")
+const Category = require("../models/Category");
+const Cart = require("../models/Cart");
+const SubCategory = require("../models/SubCategory");
+const User = require("../models/User");
 const { validationResult } = require("express-validator");
 const fs = require("fs");
 const path = require("path");
@@ -28,7 +31,7 @@ const getAllProducts = async (req, res) => {
       let offersProduct = await Product.find({
         "subProducts.discount": { $gt: 5 },
       }).populate({
-        path: "category"
+        path: "category",
       });
       let newProducts = await Product.aggregate([
         { $sample: { size: 10 } },
@@ -36,19 +39,17 @@ const getAllProducts = async (req, res) => {
       let popularProducts = await Product.find({
         rating: { $gt: 3 },
       }).populate({
-        path: "category"
+        path: "category",
       });
-      res
-        .status(200)
-        .json({
-          data: GoalUsers,
-          sliderProductImages: sliderProductImages,
-          products: products,
-          offersProduct: offersProduct,
-          newProducts: newProducts,
-          popularProducts: popularProducts,
-          AllUserNum,
-        });
+      res.status(200).json({
+        data: GoalUsers,
+        sliderProductImages: sliderProductImages,
+        products: products,
+        offersProduct: offersProduct,
+        newProducts: newProducts,
+        popularProducts: popularProducts,
+        AllUserNum,
+      });
     }
   } catch (err) {
     console.log(err);
@@ -59,15 +60,114 @@ module.exports.getAllProducts = getAllProducts;
 
 const getProductDetail = async (req, res) => {
   try {
-    db.connectDb();
+    
+    const slug = req.params.slug;
+    const style = req.params.style;
+    const size = req.params.size || 0;
+    let product = await Product.findOne({ slug })
+      .populate({ path: "category", model: Category })
+      .populate({ path: "subCategories", model: SubCategory })
+      .populate({ path: "reviews.reviewBy", model: User })
+      .lean();
+    
+    let subProduct = product.subProducts[0];
+    let prices = subProduct.sizes
+      .map((s) => {
+        return s.price;
+      })
+      .sort((a, b) => {
+        return a - b;
+      });
+    let newProduct = {
+      ...product,
+      style,
+      images: subProduct.images,
+      sizes: subProduct.sizes,
+      discount: subProduct.discount,
+      sku: subProduct.sku,
+      colors: product.subProducts.map((p) => {
+        return p.color;
+      }),
+      priceRange: subProduct.discount
+        ? `از ${(prices[0] - prices[0] / subProduct.discount).toFixed(0)} تا ${(
+            prices[prices.length - 1] -
+            prices[prices.length - 1] / subProduct.discount
+          ).toFixed(0)}`
+        : `از ${prices[0]} تا ${prices[prices.length - 1]}`,
+      price:
+        subProduct.discount > 0
+          ? (
+              subProduct.sizes[size].price -
+              subProduct.sizes[size].price / subProduct.discount
+            ).toFixed(0)
+          : subProduct.sizes[size].price,
+      priceBefore: subProduct.sizes[size].price,
+      quantity: subProduct.sizes[size].qty,
+      ratings: [
+        {
+          percentage: calculatePercentage("5"),
+        },
+        {
+          percentage: calculatePercentage("4"),
+        },
+        {
+          percentage: calculatePercentage("3"),
+        },
+        {
+          percentage: calculatePercentage("2"),
+        },
+        {
+          percentage: calculatePercentage("1"),
+        },
+      ],
+      reviews: product.reviews.reverse(),
+      allSizes: product.subProducts
+        .map((p) => {
+          return p.sizes;
+        })
+        .flat()
+        .sort((a, b) => {
+          return a.size - b.size;
+        })
+        .filter(
+          (element, index, array) =>
+            array.findIndex((el2) => el2.size === element.size) === index
+        ),
+    };
+    //-----------------
+    function calculatePercentage(num) {
+      return (
+        (product.reviews.reduce((a, review) => {
+          return (
+            a +
+            (review.rating == Number(num) || review.rating == Number(num) + 0.5)
+          );
+        }, 0) *
+          100) /
+        product.reviews.length
+      ).toFixed(0);
+    }
+
+    return res.json({ data: newProduct });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+module.exports.getProductDetail = getProductDetail;
+
+const getProductInfoForAddToCart = async (req, res) => {
+  try {
     const id = req.params.id;
     const style = req.params.style || 0;
     let size = req.params.size === undefined ? 0 : req.params.size;
     const product = await Product.findById(id).lean();
+    console.log(id);
+    console.log(style);
+    console.log(size);
+    console.log(product);
     let discount = product.subProducts[style].discount;
     let priceBefore = product.subProducts[style].sizes[size].price;
     let price = discount ? priceBefore - priceBefore / discount : priceBefore;
-    db.disconnectDb();
     return res.json({
       _id: product._id,
       style: Number(style),
@@ -90,7 +190,64 @@ const getProductDetail = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
-module.exports.getProductDetail = getProductDetail;
+module.exports.getProductInfoForAddToCart = getProductInfoForAddToCart;
+
+const getItemsCardForOrder = async (req, res) => {
+  try {
+    const user = await User.findById(jwt.verify(req.headers?.authorization?.split(" ")[1], process.env.TOKEN_SECRET)._id);
+    const cart = await Cart.findOne({ user: user._id });
+    console.log(user)
+    console.log(cart)
+    if (!cart) {
+      return {
+        redirect: {
+          destination: "/cart",
+        },
+      };
+    }
+    return res.json({ data: { cart: cart, user: user } });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+}
+module.exports.getItemsCardForOrder = getItemsCardForOrder;
+
+// const getAllItemsCart = async (req, res) => {
+//   try {
+//     const id = req.params.id;
+//     const style = req.params.style || 0;
+//     let size = req.params.size === undefined ? 0 : req.params.size;
+//     const product = await Product.findById(id).lean();
+//     console.log(id);
+//     console.log(style);
+//     console.log(size);
+//     console.log(product);
+//     let discount = product.subProducts[style].discount;
+//     let priceBefore = product.subProducts[style].sizes[size].price;
+//     let price = discount ? priceBefore - priceBefore / discount : priceBefore;
+//     return res.json({
+//       _id: product._id,
+//       style: Number(style),
+//       name: product.name,
+//       description: product.description,
+//       slug: product.slug,
+//       sku: product.subProducts[style].sku,
+//       brand: product.brand,
+//       category: product.category,
+//       subCategories: product.subCategories,
+//       shipping: product.shipping,
+//       images: product.subProducts[style].images,
+//       color: product.subProducts[style].color,
+//       size: product.subProducts[style].sizes[size].size,
+//       price,
+//       priceBefore,
+//       quantity: product.subProducts[style].sizes[size].qty,
+//     });
+//   } catch (error) {
+//     return res.status(500).json({ message: error.message });
+//   }
+// }
+// module.exports.getAllItemsCart = getAllItemsCart;
 
 const createProduct = async (req, res) => {
   try {
@@ -150,8 +307,7 @@ module.exports.createProduct = createProduct;
 
 const createOrUpdateReview = async (req, res) => {
   try {
-    await db.connectDb();
-    const product = await Product.findById(req.query.id);
+    const product = await Product.findById(req.params.id);
 
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
@@ -195,7 +351,6 @@ const createOrUpdateReview = async (req, res) => {
 
     await product.save();
     await product.populate("reviews.reviewBy");
-    await db.disconnectDb();
 
     return res.status(200).json({ reviews: product.reviews.reverse() });
   } catch (error) {

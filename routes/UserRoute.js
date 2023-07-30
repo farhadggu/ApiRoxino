@@ -9,6 +9,7 @@ const verify = require("../middleware/verify.middleware")
 router.get("/users", verify, UserCtrl.getAllUsers)
 
 router.post("/signup", UserCtrl.newUser)
+router.post("/otp-code", UserCtrl.otpCodeUser)
 router.post("/login", UserCtrl.loginUser)
 
 router.post("update-user/:id", [
@@ -69,7 +70,7 @@ router.delete("/delete-addresse", UserCtrl.deleteAddress)
 
 router.get("/wishlists", UserCtrl.getAllWishlists)
 
-router.put("/create-wishlist", UserCtrl.createOrUpdateWishlist)
+router.put("/wishlist", UserCtrl.createOrUpdateWishlist)
 
 router.delete("/delete-wishlist", UserCtrl.deleteWishlist)
 

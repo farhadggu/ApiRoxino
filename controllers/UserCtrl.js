@@ -2,6 +2,9 @@ const User = require("../models/User");
 const { validationResult } = require("express-validator");
 const bcrypt = require("bcrypt");
 const token = require("../utils/token.util");
+const { KavenegarApi } = require("kavenegar");
+const { serialize } = require("cookie");
+const jwt = require("jsonwebtoken")
 
 const getAllUsers = async (req, res) => {
   try {
@@ -54,46 +57,114 @@ const newUser = async (req, res) => {
 };
 module.exports.newUser = newUser;
 
+const otpCodeUser = async (req, res) => {
+  let otpCode = Math.floor(Math.random() * 90000) + 10000;
+  try {
+    let api = KavenegarApi({
+      apikey:
+        "5548565754686E477A666B68443666645A785078485252734454454D68584E5575325537426730556767413D",
+    });
+    api.Send({
+      message: `خدمات پیام کوتاه کاوه نگار ${otpCode}`,
+      sender: "10008663",
+      receptor: req.body.phone_login,
+    });
+    return res.status(200).json({ message: "ok", otpCode: otpCode });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+module.exports.otpCodeUser = otpCodeUser;
+
 const loginUser = async (req, res) => {
   try {
-    const data = req.body;
-    const result = await User.findOne({ email: data.email });
-    console.log(result)
-    if (!result) {
-      return res
-        .status(400)
-        .json({ message: "اطلاعات وارد شده نادرست می باشد" });
+    console.log(req.body.otpCode);
+    console.log(req.body.login_password);
+    if (req.body.otpCode == req.body.login_password) {
+      console.log(req.body.login_phone);
+
+      const user = await User.findOne({ phone: req.body.login_phone });
+      console.log(user);
+      if (user) {
+        // Generate your token here
+        const accessToken = token(user);
+        console.log(accessToken)
+
+        res.cookie('access_token', accessToken, {
+          httpOnly: true,
+          // Other cookie options (secure, domain, etc.) can be added here
+        });
+
+        // Set the new cookie in the response header
+
+        return res.status(200).json({
+          message: "qablan create shode budi",
+          otpCode: req.body.otpCode,
+          auth_token: accessToken,
+        });
+      } else {
+        const newUser = new User({ phone: req.body.login_phone });
+        await newUser.save();
+
+        const accessToken = token(newUser);
+
+        res.cookie('access_token', accessToken, {
+          httpOnly: true,
+          // Other cookie options (secure, domain, etc.) can be added here
+        });
+
+        return res.status(200).json({
+          message: "حساب کاربری شما ساخته شد",
+          auth_token: accessToken,
+        });
+      }
+    } else {
+      return res.status(401).json({ message: "کد ارسالی نا معتبر است" });
     }
-
-    const isPasswordValid = await bcrypt.compare(
-      data.password,
-      result.password
-    );
-
-    console.log(isPasswordValid);
-
-    if (!isPasswordValid) {
-      return res
-        .status(400)
-        .json({ message: "اطلاعات وارد شده نادرست می باشد" });
-    }
-
-    const accessToken = token(result);
-
-    res.cookie('access_token', accessToken, {
-      httpOnly: true,
-      // Other cookie options (secure, domain, etc.) can be added here
-    });
-
-    console.log("access", accessToken);
-
-    return res
-      .status(200)
-      .json({ message: "شما با موفقیت وارد شدید" });
-  } catch (err) {
-    console.log(err);
-    return res.status(400).json(err);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: error.message });
   }
+  // try {
+  //   const data = req.body;
+  //   const result = await User.findOne({ email: data.email });
+  //   console.log(result)
+  //   if (!result) {
+  //     return res
+  //       .status(400)
+  //       .json({ message: "اطلاعات وارد شده نادرست می باشد" });
+  //   }
+
+  //   const isPasswordValid = await bcrypt.compare(
+  //     data.password,
+  //     result.password
+  //   );
+
+  //   console.log(isPasswordValid);
+
+  //   if (!isPasswordValid) {
+  //     return res
+  //       .status(400)
+  //       .json({ message: "اطلاعات وارد شده نادرست می باشد" });
+  //   }
+
+  //   const accessToken = token(result);
+
+    // res.cookie('access_token', accessToken, {
+    //   httpOnly: true,
+    //   // Other cookie options (secure, domain, etc.) can be added here
+    // });
+
+  //   console.log("access", accessToken);
+
+  //   return res
+  //     .status(200)
+  //     .json({ message: "شما با موفقیت وارد شدید" });
+  // } catch (err) {
+  //   console.log(err);
+  //   return res.status(400).json(err);
+  // }
 };
 module.exports.loginUser = loginUser;
 
@@ -250,22 +321,20 @@ module.exports.getAllWishlists = getAllWishlists;
 
 const createOrUpdateWishlist = async (req, res) => {
   try {
-    await db.connectDb();
     const { product_id, style } = req.body;
 
-    const user = await User.findById(req.user);
+    const user = await User.findById(jwt.verify(req.headers?.authorization?.split(" ")[1], process.env.TOKEN_SECRET)._id);
+
     const exist = user.wishlist.find(
       (x) => x.product.toString() === product_id && x.style === style
     );
     if (exist) {
-      await db.disconnectDb();
       return res
         .status(400)
-        .json({ message: "این محصول در علاقه‌مندی‌های شما موجود می‌باشد" });
+        .json({ message: "این محصول در علاقه‌مندی‌ های شما موجود می‌باشد" });
     }
     user.wishlist.push({ product: product_id, style });
     await user.save();
-    await db.disconnectDb();
     return res
       .status(200)
       .json({ message: "محصول با موفقیت به علاقه‌مندی‌ها اضافه شد" });
@@ -374,7 +443,6 @@ module.exports.saveAddresses = saveAddresses;
 
 const saveCart = async (req, res) => {
   try {
-    await db.connectDb();
     const { cart } = req.body;
     let products = [];
     let user = await User.findById(req.user);
@@ -415,7 +483,6 @@ const saveCart = async (req, res) => {
       cartTotal: cartTotal.toFixed(0),
       user: user._id,
     }).save();
-    await db.disconnectDb();
     return res
       .status(200)
       .json({ message: "محصول در داده های سبد خرید ذخیره شد" });
