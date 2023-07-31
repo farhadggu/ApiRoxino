@@ -6,12 +6,12 @@ const verify = require("../middleware/verify.middleware");
 
 router.get("/order", verify, OrderCtrl.getAllOrder);
 
-router.delete("/order/:id", verify, OrderCtrl.getOrderDetail);
+router.get("/order/:id", verify, OrderCtrl.getOrderDetail);
 
 router.post("/create-order", verify, OrderCtrl.createOrder);
 
-router.post("/create-pay", verify, OrderCtrl.createOrderPay);
+router.post("/create-pay/:id", verify, OrderCtrl.createOrderPay);
 
-
+router.get("/payment-info/:id/:amount/:Authority", verify, OrderCtrl.getPaymentInfo);
 
 module.exports = router;

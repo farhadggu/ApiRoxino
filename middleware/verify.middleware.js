@@ -4,7 +4,6 @@ const jwt = require("jsonwebtoken");
 const { promisify } = require("util");
 
 async function verify(req, res, next) {
-  console.log(req.headers?.authorization?.split(" ")[1])
   // console.log(req.headers.authorization);
   try {
     // catch the token from the user's header

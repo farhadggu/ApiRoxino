@@ -11,7 +11,9 @@ router.get("/products/:slug", verify, ProductCtrl.getProductDetail)
 
 router.get("/product/:id", verify, ProductCtrl.getProductInfoForAddToCart)
 
-router.get("/product/checkout", verify, ProductCtrl.getItemsCardForOrder)
+router.get("/product-checkout", verify, ProductCtrl.getItemsCardForOrder)
+
+router.get("/all-products", verify, ProductCtrl.getAllProductsFilterController)
 
 router.post("/create-products", verify, ProductCtrl.createProduct)
 

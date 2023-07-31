@@ -1,10 +1,12 @@
 const User = require("../models/User");
+const Cart = require("../models/Cart");
+const Product = require("../models/Product");
 const { validationResult } = require("express-validator");
 const bcrypt = require("bcrypt");
 const token = require("../utils/token.util");
 const { KavenegarApi } = require("kavenegar");
 const { serialize } = require("cookie");
-const jwt = require("jsonwebtoken")
+const jwt = require("jsonwebtoken");
 
 const getAllUsers = async (req, res) => {
   try {
@@ -29,6 +31,24 @@ const getAllUsers = async (req, res) => {
   }
 };
 module.exports.getAllUsers = getAllUsers;
+
+const getUser = async (req, res) => {
+  try {
+    const user = await User.findById(
+      jwt.verify(
+        req.headers?.authorization?.split(" ")[1],
+        process.env.TOKEN_SECRET
+      )._id
+    );
+    const tab = req.query.tab || 0;
+
+    res.status(200).json({ user: user, tab: tab });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json(err);
+  }
+};
+module.exports.getUser = getUser;
 
 const newUser = async (req, res) => {
   try {
@@ -89,9 +109,9 @@ const loginUser = async (req, res) => {
       if (user) {
         // Generate your token here
         const accessToken = token(user);
-        console.log(accessToken)
+        console.log(accessToken);
 
-        res.cookie('access_token', accessToken, {
+        res.cookie("access_token", accessToken, {
           httpOnly: true,
           // Other cookie options (secure, domain, etc.) can be added here
         });
@@ -109,7 +129,7 @@ const loginUser = async (req, res) => {
 
         const accessToken = token(newUser);
 
-        res.cookie('access_token', accessToken, {
+        res.cookie("access_token", accessToken, {
           httpOnly: true,
           // Other cookie options (secure, domain, etc.) can be added here
         });
@@ -151,10 +171,10 @@ const loginUser = async (req, res) => {
 
   //   const accessToken = token(result);
 
-    // res.cookie('access_token', accessToken, {
-    //   httpOnly: true,
-    //   // Other cookie options (secure, domain, etc.) can be added here
-    // });
+  // res.cookie('access_token', accessToken, {
+  //   httpOnly: true,
+  //   // Other cookie options (secure, domain, etc.) can be added here
+  // });
 
   //   console.log("access", accessToken);
 
@@ -251,11 +271,15 @@ module.exports.updateMiniUser = updateMiniUser;
 
 const getAllAddresses = async (req, res) => {
   try {
-    jwt;
-    const address = await User.findById(session?.user?.id)
+    const address = await User.findById(
+      jwt.verify(
+        req.headers?.authorization?.split(" ")[1],
+        process.env.TOKEN_SECRET
+      )._id
+    )
       .select("address")
       .lean();
-    res.status(200).json({ address: address });
+    res.status(200).json({ data: address });
   } catch (err) {
     console.log(err);
     res.status(400).json(err);
@@ -265,9 +289,13 @@ module.exports.getAllAddresses = getAllAddresses;
 
 const createOrUpdateAddresses = async (req, res) => {
   try {
-    await db.connectDb();
     const { id } = req.body;
-    const user = await User.findById(req.user);
+    const user = await User.findById(
+      jwt.verify(
+        req.headers?.authorization?.split(" ")[1],
+        process.env.TOKEN_SECRET
+      )._id
+    );
     const userAddresses = user.address;
     const addresses = userAddresses.map((address) => {
       return {
@@ -278,7 +306,6 @@ const createOrUpdateAddresses = async (req, res) => {
 
     await user.updateOne({ address: addresses }, { new: true });
 
-    await db.disconnectDb();
     return res.status(200).json({ addresses });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -288,11 +315,14 @@ module.exports.createOrUpdateAddresses = createOrUpdateAddresses;
 
 const deleteAddress = async (req, res) => {
   try {
-    await db.connectDb();
-    const id = req.query.id;
-    const user = await User.findById(req.user);
+    const id = req.params.id;
+    const user = await User.findById(
+      jwt.verify(
+        req.headers?.authorization?.split(" ")[1],
+        process.env.TOKEN_SECRET
+      )._id
+    );
     await user.updateOne({ $pull: { address: { _id: id } } }, { new: true });
-    await db.disconnectDb();
     res.json({
       addresses: user.address.filter((a) => a._id.toString() !== id),
     });
@@ -323,7 +353,12 @@ const createOrUpdateWishlist = async (req, res) => {
   try {
     const { product_id, style } = req.body;
 
-    const user = await User.findById(jwt.verify(req.headers?.authorization?.split(" ")[1], process.env.TOKEN_SECRET)._id);
+    const user = await User.findById(
+      jwt.verify(
+        req.headers?.authorization?.split(" ")[1],
+        process.env.TOKEN_SECRET
+      )._id
+    );
 
     const exist = user.wishlist.find(
       (x) => x.product.toString() === product_id && x.style === style
@@ -424,16 +459,24 @@ module.exports.updateProfile = updateProfile;
 
 const saveAddresses = async (req, res) => {
   try {
-    await db.connectDb();
     const { address } = req.body;
-    let user = await User.findById(req.user);
+    let user = await User.findById(
+      jwt.verify(
+        req.headers?.authorization?.split(" ")[1],
+        process.env.TOKEN_SECRET
+      )._id
+    );
     await user.updateOne({
       $push: {
         address: address,
       },
     });
-    user = await User.findById(req.user);
-    await db.disconnectDb();
+    user = await User.findById(
+      jwt.verify(
+        req.headers?.authorization?.split(" ")[1],
+        process.env.TOKEN_SECRET
+      )._id
+    );
     return res.status(201).json({ addresses: user.address });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -445,7 +488,12 @@ const saveCart = async (req, res) => {
   try {
     const { cart } = req.body;
     let products = [];
-    let user = await User.findById(req.user);
+    let user = await User.findById(
+      jwt.verify(
+        req.headers?.authorization?.split(" ")[1],
+        process.env.TOKEN_SECRET
+      )._id
+    );
     let existing_cart = await Cart.findOne({ user: user._id });
     if (existing_cart) {
       await Cart.deleteOne({ _id: existing_cart._id });

@@ -1,5 +1,7 @@
 const Coupon = require("../models/Coupon");
-const { validationResult } = require("express-validator");
+const Cart = require("../models/Cart");
+const User = require("../models/User");
+const jwt = require("jsonwebtoken")
 const slugify = require("slugify");
 
 const getAllCoupon = async (req, res) => {
@@ -87,13 +89,14 @@ module.exports.deleteCoupon = deleteCoupon;
 
 const applyCoupon = async (req, res) => {
   try {
-    await db.connectDb();
     const { coupon } = req.body;
-    const user = await User.findById(req.user);
+    const user = await User.findById(jwt.verify(
+      req.headers?.authorization?.split(" ")[1],
+      process.env.TOKEN_SECRET
+    )._id);
     const checkCoupon = await Coupon.findOne({ coupon });
 
     if (!checkCoupon) {
-      await db.disconnectDb();
       return res.json({ message: "کد تخفیف نامعتبر" });
     }
 
@@ -103,7 +106,6 @@ const applyCoupon = async (req, res) => {
 
     await Cart.findOneAndUpdate({ user: user._id }, { totalAfterDiscount });
 
-    await db.disconnectDb();
     return res.json({
       totalAfterDiscount: totalAfterDiscount.toFixed(0),
       discount: checkCoupon.discount,

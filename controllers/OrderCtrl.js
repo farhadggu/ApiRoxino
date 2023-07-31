@@ -1,5 +1,12 @@
 const Order = require("../models/Order");
 const User = require("../models/User");
+const axios = require("axios");
+const ZarinpalCheckout = require("zarinpal-checkout");
+
+const zarinpal = ZarinpalCheckout.create(
+  process.env.ZARINPAL_SECRET_KEY,
+  false
+);
 
 const getAllOrder = async (req, res) => {
   try {
@@ -29,7 +36,7 @@ module.exports.getAllOrder = getAllOrder;
 
 const getOrderDetail = async (req, res) => {
   try {
-    const order = await Order.findById(id).populate("user").lean();
+    const order = await Order.findById(req.params.id).populate("user").lean();
     res.status(200).json({ data: order });
   } catch (err) {
     console.log(err);
@@ -70,25 +77,69 @@ module.exports.createOrder = createOrder;
 const createOrderPay = async (req, res) => {
   try {
     const { amount } = req.body;
-    const { id: order_id } = req.query;
+    const order_id = req.params.id;
 
-    // You can set the amount directly from the request body if it's being passed
-    // const amount = req.body.amount;
-
-    // Replace the hard-coded amountt with the amount from the request body
-    const zarinpal = await axios.post(
-      "https://api.zarinpal.com/pg/v4/payment/request.json",
-      {
-        merchant_id: `${process.env.ZARINPAL_SECRET_KEY}`,
-        amount: amount,
-        description: "فروشگاه نکست جی اس",
-        callback_url: `${process.env.WEB_URL}/verifyOrder?id=${order_id}&amount=${amount}`,
-      }
-    );
-
-    return res.json({ authority: zarinpal.data.data.authority });
+    zarinpal
+      .PaymentRequest({
+        Amount: 5000, // In Tomans
+        CallbackURL: `${process.env.WEB_URL}/verifyOrder?id=${order_id}&amount=${amount}`,
+        Description: "فروشگاه نکست جی اس",
+      })
+      .then((response) => {
+        if (response.status === 100) {
+          console.log(response);
+          return res.json({ authority: response.authority });
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+      });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
 module.exports.createOrderPay = createOrderPay;
+
+const getPaymentInfo = async (req, res) => {
+  try {
+    let paid = null;
+    console.log(req.params.id);
+    console.log(req.params.amount);
+    console.log(req.params.Authority);
+    zarinpal
+      .PaymentVerification({
+        Amount: req.params.amount, // In Tomans
+        Authority: req.params.Authority,
+      })
+      .then(async (response) => {
+        console.log(response)
+        if (response.status === 100 || response.status === 101) {
+          await Order.findByIdAndUpdate(req.params.id, {
+            status: "Processed",
+            isPaid: true,
+          });
+        } else {
+          console.log("eh")
+          await Order.findByIdAndUpdate(req.params.id, {
+            status: "Not Processed",
+            isPaid: false,
+          });
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+
+    let order = await Order.findById(req.params.id);
+
+    return res.json({
+      data: {
+        order_id: req.params.id,
+        order: order,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+module.exports.getPaymentInfo = getPaymentInfo;

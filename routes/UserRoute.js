@@ -7,6 +7,7 @@ const User = require("../models/User")
 const verify = require("../middleware/verify.middleware")
 
 router.get("/users", verify, UserCtrl.getAllUsers)
+router.get("/user", verify, UserCtrl.getUser)
 
 router.post("/signup", UserCtrl.newUser)
 router.post("/otp-code", UserCtrl.otpCodeUser)
@@ -64,9 +65,9 @@ router.post("/search-user", UserCtrl.searchUser)
 
 router.get("/addresses", UserCtrl.getAllAddresses)
 
-router.put("/create-addresse", UserCtrl.createOrUpdateAddresses)
+router.put("/manage-address", UserCtrl.createOrUpdateAddresses)
 
-router.delete("/delete-addresse", UserCtrl.deleteAddress)
+router.delete("/delete-addresse/:id", UserCtrl.deleteAddress)
 
 router.get("/wishlists", UserCtrl.getAllWishlists)
 
@@ -78,8 +79,8 @@ router.put("/change-password", UserCtrl.changePassword)
 
 router.put("/update-profile", UserCtrl.updateProfile)
 
-router.post("/save-address", UserCtrl.saveAddresses)
+router.post("/save-address", verify, UserCtrl.saveAddresses)
 
-router.post("/save-cart", UserCtrl.saveCart)
+router.post("/save-cart", verify, UserCtrl.saveCart)
 
 module.exports = router;

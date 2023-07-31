@@ -3,9 +3,10 @@ const Category = require("../models/Category");
 const Cart = require("../models/Cart");
 const SubCategory = require("../models/SubCategory");
 const User = require("../models/User");
-const { validationResult } = require("express-validator");
+const jwt = require("jsonwebtoken");
 const fs = require("fs");
 const path = require("path");
+const { removeDuplicates } = require("../utils/arrays_utils")
 
 const getAllProducts = async (req, res) => {
   try {
@@ -60,7 +61,6 @@ module.exports.getAllProducts = getAllProducts;
 
 const getProductDetail = async (req, res) => {
   try {
-    
     const slug = req.params.slug;
     const style = req.params.style;
     const size = req.params.size || 0;
@@ -69,7 +69,7 @@ const getProductDetail = async (req, res) => {
       .populate({ path: "subCategories", model: SubCategory })
       .populate({ path: "reviews.reviewBy", model: User })
       .lean();
-    
+
     let subProduct = product.subProducts[0];
     let prices = subProduct.sizes
       .map((s) => {
@@ -194,10 +194,15 @@ module.exports.getProductInfoForAddToCart = getProductInfoForAddToCart;
 
 const getItemsCardForOrder = async (req, res) => {
   try {
-    const user = await User.findById(jwt.verify(req.headers?.authorization?.split(" ")[1], process.env.TOKEN_SECRET)._id);
+    const user = await User.findById(
+      jwt.verify(
+        req.headers?.authorization?.split(" ")[1],
+        process.env.TOKEN_SECRET
+      )._id
+    );
     const cart = await Cart.findOne({ user: user._id });
-    console.log(user)
-    console.log(cart)
+    // console.log(user)
+    console.log(cart);
     if (!cart) {
       return {
         redirect: {
@@ -209,7 +214,7 @@ const getItemsCardForOrder = async (req, res) => {
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
-}
+};
 module.exports.getItemsCardForOrder = getItemsCardForOrder;
 
 // const getAllItemsCart = async (req, res) => {
@@ -248,6 +253,199 @@ module.exports.getItemsCardForOrder = getItemsCardForOrder;
 //   }
 // }
 // module.exports.getAllItemsCart = getAllItemsCart;
+
+const getAllProductsFilter = async (query) => {
+  function createRegex(data, styleRegex) {
+    if (data.length > 1) {
+      for (var i = 1; i < data.length; i++) {
+        styleRegex += `|^${data[i]}`;
+      }
+    }
+    return styleRegex;
+  }
+
+  const searchQuery = query.search || "";
+  const categoryQuery = query.category || "";
+  const priceQuery = query.price?.split("_") || "";
+  const ratingQuery = query.rating || "";
+  const sortQuery = query.sort || "";
+  const page = query.page || 1;
+  const pageSize = 15;
+  const sizeQuery = query.size?.split("_") || "";
+  const sizeRegex = `^${sizeQuery[0]}`;
+  const sizeSearchRegex = createRegex(sizeQuery, sizeRegex);
+  const colorQuery = query.color?.split("_") || "";
+  const colorRegex = `^${colorQuery[0]}`;
+  const colorSearchRegex = createRegex(colorQuery, colorRegex);
+  const brandQuery = query.brand?.split("_") || "";
+  const brandRegex = `^${brandQuery[0]}`;
+  const brandSearchRegex = createRegex(brandQuery, brandRegex);
+  const styleQuery = query.style?.split("_") || "";
+  const styleRegex = `^${styleQuery[0]}`;
+  const styleSearchRegex = createRegex(styleQuery, styleRegex);
+
+  const search =
+    searchQuery && searchQuery !== ""
+      ? {
+          name: {
+            $regex: searchQuery,
+            $options: "i",
+          },
+        }
+      : {};
+
+  const category =
+    categoryQuery && categoryQuery !== "" ? { category: categoryQuery } : {};
+
+  const size =
+    sizeQuery && sizeQuery !== ""
+      ? {
+          "subProducts.sizes.size": {
+            $regex: sizeSearchRegex,
+            $options: "i",
+          },
+        }
+      : {};
+
+  const color =
+    colorQuery && colorQuery !== ""
+      ? {
+          "subProducts.color.color": {
+            $regex: colorSearchRegex,
+            $options: "i",
+          },
+        }
+      : {};
+
+  const brand =
+    brandQuery && brandQuery !== ""
+      ? {
+          brand: {
+            $regex: brandSearchRegex,
+            $options: "i",
+          },
+        }
+      : {};
+
+  const style =
+    styleQuery && styleQuery !== ""
+      ? {
+          "details.value": {
+            $regex: styleSearchRegex,
+            $options: "i",
+          },
+        }
+      : {};
+
+  const price =
+    priceQuery && priceQuery !== ""
+      ? {
+          "subProducts.sizes.price": {
+            $gte: Number(priceQuery[0]) || 0,
+            $lte: Number(priceQuery[1]) || Infinity,
+          },
+        }
+      : {};
+
+  const rating =
+    ratingQuery && ratingQuery !== ""
+      ? {
+          rating: {
+            $gte: Number(ratingQuery),
+          },
+        }
+      : {};
+
+  const sort =
+    sortQuery == ""
+      ? {}
+      : sortQuery == "popular"
+      ? { rating: -1, "subProducts.review": -1 }
+      : sortQuery == "newest"
+      ? { createdAt: -1 }
+      : sortQuery == "topSelling"
+      ? { "subProducts.sold": -1 }
+      : sortQuery == "topReviewed"
+      ? { rating: -1 }
+      : sortQuery == "priceHighToLow"
+      ? { "subProducts.sizes.price": -1 }
+      : sortQuery == "priceLowToHigh"
+      ? { "subProducts.sizes.price": 1 }
+      : {};
+
+  const totalProducts = await Product.countDocuments({
+    ...search,
+    ...category,
+    ...brand,
+    ...style,
+    ...size,
+    ...color,
+    ...price,
+    ...rating,
+  });
+
+  const products = await Product.find({
+    ...search,
+    ...category,
+    ...size,
+    ...color,
+    ...brand,
+    ...style,
+    ...price,
+    ...rating,
+  })
+    .skip(pageSize * (page - 1))
+    .limit(pageSize)
+    .sort(sort)
+    .populate({ path: "category", model: Category })
+    .lean();
+
+  let sizes = await Product.find({ ...category }).distinct(
+    "subProducts.sizes.size"
+  );
+
+  let colors = await Product.find({ ...category }).distinct(
+    "subProducts.color.color"
+  );
+
+  let brandsDb = await Product.find({ ...category }).distinct("brand");
+  let brands = removeDuplicates(brandsDb);
+
+  return {
+    products,
+    paginationCount: Math.ceil(totalProducts / pageSize),
+    sizes,
+    colors,
+    brands,
+  };
+};
+module.exports.getAllProductsFilter = getAllProductsFilter;
+
+const getAllProductsFilterController = async (req, res) => {
+  try {
+    const { query } = req;
+    console.log(query)
+    const { products, paginationCount, sizes, colors, brands } =
+      await getAllProductsFilter(query);
+
+    // Other code to handle the response
+    // ...
+
+    return res
+      .status(200)
+      .json({
+        data: {
+          products: products,
+          sizes: sizes,
+          colors: colors,
+          brands: brands,
+        },
+      });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+module.exports.getAllProductsFilterController = getAllProductsFilterController;
 
 const createProduct = async (req, res) => {
   try {

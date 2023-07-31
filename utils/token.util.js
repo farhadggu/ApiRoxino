@@ -1,10 +1,3 @@
-/**
- * Title: Secret token credentials
- * Description: Token that consume user minification credentials that help in persisting user
- * Author: Hasibul Islam
- * Date: 11/03/2023
- */
-
 /* external import */
 const jwt = require("jsonwebtoken");
 
