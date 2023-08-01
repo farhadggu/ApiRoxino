@@ -20,6 +20,7 @@ const subCategoryRoute = require("./routes/SubCategoryRoute");
 const CouponRoute = require("./routes/CouponRoute");
 const SettingsRoute = require("./routes/SettingsRoute");
 const OrderRoute = require("./routes/OrderRoute");
+const AdminRoute = require("./routes/AdminRoute");
 
 /* application level connection */
 const app = express();
@@ -45,6 +46,7 @@ app.use("/api", subCategoryRoute);
 app.use("/api", CouponRoute);
 app.use("/api", SettingsRoute);
 app.use("/api", OrderRoute);
+app.use("/api/admin", AdminRoute);
 
 /* connection establishment */
 app.get("/", (req, res, next) => {

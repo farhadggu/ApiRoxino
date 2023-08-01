@@ -6,6 +6,8 @@ const verify = require("../middleware/verify.middleware");
 
 router.get("/order", verify, OrderCtrl.getAllOrder);
 
+router.get("/orders", verify, OrderCtrl.orderAllFilterController);
+
 router.get("/order/:id", verify, OrderCtrl.getOrderDetail);
 
 router.post("/create-order", verify, OrderCtrl.createOrder);

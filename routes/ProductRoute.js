@@ -21,6 +21,4 @@ router.put("/product/:id/review", verify, ProductCtrl.createOrUpdateReview)
 
 router.put("/update-products/:id", verify, ProductCtrl.updateProduct)
 
-router.delete("/delete-products/:id", verify, ProductCtrl.deleteProduct)
-
 module.exports = router;

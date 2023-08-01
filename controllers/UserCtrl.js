@@ -279,7 +279,14 @@ const getAllAddresses = async (req, res) => {
     )
       .select("address")
       .lean();
-    res.status(200).json({ data: address });
+    const tab = req.query.tab || 0;
+    const user = await User.findById(
+      jwt.verify(
+        req.headers?.authorization?.split(" ")[1],
+        process.env.TOKEN_SECRET
+      )._id
+    );
+    res.status(200).json({ data: { address: address, user: user }, tab: tab });
   } catch (err) {
     console.log(err);
     res.status(400).json(err);
@@ -334,14 +341,18 @@ module.exports.deleteAddress = deleteAddress;
 
 const getAllWishlists = async (req, res) => {
   try {
-    jwt;
-    const address = await User.findById(session?.user?.id)
+    const wishlists = await User.findById(
+      jwt.verify(
+        req.headers?.authorization?.split(" ")[1],
+        process.env.TOKEN_SECRET
+      )._id
+    )
       .populate({
         path: "wishlist.product",
         model: Product,
       })
       .select("wishlist");
-    res.status(200).json({ address: address });
+    res.status(200).json({ data: wishlists });
   } catch (err) {
     console.log(err);
     res.status(400).json(err);
@@ -381,9 +392,11 @@ module.exports.createOrUpdateWishlist = createOrUpdateWishlist;
 
 const deleteWishlist = async (req, res) => {
   try {
-    await db.connectDb();
-    const data = req.query.id;
-    let user = await User.findById(req.user);
+    const data = req.params.id;
+    let user = await User.findById(jwt.verify(
+      req.headers?.authorization?.split(" ")[1],
+      process.env.TOKEN_SECRET
+    )._id);
 
     await user.updateOne(
       {
@@ -392,8 +405,10 @@ const deleteWishlist = async (req, res) => {
       { new: true }
     );
 
-    user = await User.findById(req.user);
-    await db.disconnectDb();
+    user = await User.findById(jwt.verify(
+      req.headers?.authorization?.split(" ")[1],
+      process.env.TOKEN_SECRET
+    )._id);
     return res.status(200).json({
       message: "محصول با موفقیت از علاقه مندی ها حذف شد",
       products: user.wishlist,
@@ -406,16 +421,19 @@ module.exports.deleteWishlist = deleteWishlist;
 
 const changePassword = async (req, res) => {
   try {
-    await db.connectDb();
     const { current_password, password } = req.body;
-    const user = await User.findById(req.user);
+    const user = await User.findById(
+      jwt.verify(
+        req.headers?.authorization?.split(" ")[1],
+        process.env.TOKEN_SECRET
+      )._id
+    );
 
     if (!user.password) {
       const crypted_password = await bcrypt.hash(password, 12);
       await user.updateOne({
         password: crypted_password,
       });
-      await db.disconnectDb();
       return res.status(200).json({
         message:
           "ما متوجه شدیم که شما از طریق گوگل وارد حساب خود می‌شوید برای همین این رمز عبور و برای ورود به حساب خود در آینده در نظر می‌گیریم",
@@ -443,10 +461,8 @@ module.exports.changePassword = changePassword;
 
 const updateProfile = async (req, res) => {
   try {
-    await db.connectDb();
     const { id, name, email } = req.body;
     const user = await User.findByIdAndUpdate(id, { name, email });
-    await db.disconnectDb();
     return res.json({
       message: "اطلاعات پروفایل با موفقیت به روز رسانی شد",
       user: user,

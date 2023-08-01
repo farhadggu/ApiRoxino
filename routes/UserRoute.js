@@ -73,7 +73,7 @@ router.get("/wishlists", UserCtrl.getAllWishlists)
 
 router.put("/wishlist", UserCtrl.createOrUpdateWishlist)
 
-router.delete("/delete-wishlist", UserCtrl.deleteWishlist)
+router.delete("/wishlist/:id", UserCtrl.deleteWishlist)
 
 router.put("/change-password", UserCtrl.changePassword)
 

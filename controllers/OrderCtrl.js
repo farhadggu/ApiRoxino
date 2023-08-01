@@ -1,7 +1,9 @@
 const Order = require("../models/Order");
 const User = require("../models/User");
+const Category = require("../models/Category");
 const axios = require("axios");
 const ZarinpalCheckout = require("zarinpal-checkout");
+const jwt = require("jsonwebtoken")
 
 const zarinpal = ZarinpalCheckout.create(
   process.env.ZARINPAL_SECRET_KEY,
@@ -33,6 +35,51 @@ const getAllOrder = async (req, res) => {
   }
 };
 module.exports.getAllOrder = getAllOrder;
+
+const orderAllFilter = async (userId, filter) => {
+  let query = { user: userId };
+
+  if (!filter) {
+    // No filter, get all orders
+    return Order.find(query).sort({ createdAt: -1 }).lean();
+  } else if (filter === "paid") {
+    query.isPaid = true;
+  } else if (filter === "unpaid") {
+    query.isPaid = false;
+  } else {
+    query.status = filter;
+  }
+
+  return Order.find(query).sort({ createdAt: -1 }).lean();
+};
+
+const orderAllFilterController = async (req, res) => {
+  try {
+    const { query } = req;
+    const userId = jwt.verify(
+      req.headers?.authorization?.split(" ")[1],
+      process.env.TOKEN_SECRET
+    )._id;
+
+    const tab = query.tab || 0;
+    const filter = query?.q?.split("__")[1];
+
+    let categories = await Category.find().lean();
+    let orders = await orderAllFilter(userId, filter);
+
+    // Other code to handle the response
+    // ...
+    return res.status(200).json({ data: {
+      orders: orders,
+      categories: categories,
+      tab: tab
+    } });
+
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+module.exports.orderAllFilterController = orderAllFilterController;
 
 const getOrderDetail = async (req, res) => {
   try {
@@ -112,14 +159,14 @@ const getPaymentInfo = async (req, res) => {
         Authority: req.params.Authority,
       })
       .then(async (response) => {
-        console.log(response)
+        console.log(response);
         if (response.status === 100 || response.status === 101) {
           await Order.findByIdAndUpdate(req.params.id, {
             status: "Processed",
             isPaid: true,
           });
         } else {
-          console.log("eh")
+          console.log("eh");
           await Order.findByIdAndUpdate(req.params.id, {
             status: "Not Processed",
             isPaid: false,
