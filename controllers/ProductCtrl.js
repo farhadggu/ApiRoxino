@@ -559,6 +559,7 @@ module.exports.createOrUpdateReview = createOrUpdateReview;
 
 const updateProduct = async (req, res) => {
   try {
+    console.log(req.body)
     const updatedProduct = await Product.findByIdAndUpdate(req.body.id, {
       name: req.body.name,
       description: req.body.description,

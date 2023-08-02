@@ -10,6 +10,7 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
+const path = require("path");
 require("dotenv").config();
 
 /* router level imports */
@@ -47,6 +48,8 @@ app.use("/api", CouponRoute);
 app.use("/api", SettingsRoute);
 app.use("/api", OrderRoute);
 app.use("/api/admin", AdminRoute);
+
+app.use(express.static("public"));
 
 /* connection establishment */
 app.get("/", (req, res, next) => {
