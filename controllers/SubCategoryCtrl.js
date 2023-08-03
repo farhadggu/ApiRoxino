@@ -8,16 +8,15 @@ const getAllSubCategory = async (req, res) => {
       const paginate = req.query.pgn;
       const pageNumber = req.query.pn;
       const GoalUsers = await SubCategory.find()
-        .sort({ _id: -1 })
         .skip((pageNumber - 1) * paginate)
         .limit(paginate)
-        .select({ username: 1, email: 1 })
         .sort({ updatedAt: -1 })
+        .populate({ path: "parent", model: Category })
         .lean();
       const AllUserNum = await SubCategory.find().length;
       res.status(200).json({ data: GoalUsers, AllUserNum });
     } else {
-      const GoalUsers = await SubCategory.find().sort({ updatedAt: -1 }).lean();
+      const GoalUsers = await SubCategory.find().sort({ updatedAt: -1 }).populate({ path: "parent", model: Category }).lean();
       const AllUserNum = await SubCategory.find().length;
       res.status(200).json({ data: GoalUsers, AllUserNum });
     }
